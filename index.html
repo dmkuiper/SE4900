@@ -101,8 +101,12 @@
     <canvas id="gameCanvas" width="300" height="200" aria-label="Asterisk play area"></canvas>
 
     <div class="row">
-      <button id="newGameBtn" type="button">1 Player</button>
-      <div class="status" id="statusLabel">Press Start to play</div>
+      <div>
+        <button id="easyBtn" type="button">Easy</button>
+        <button id="normalBtn" type="button">Normal</button>
+        <button id="hardBtn" type="button">Hard</button>
+      </div>
+      <div class="status" id="statusLabel">Select difficulty to start</div>
     </div>
   </main>
 
@@ -110,13 +114,31 @@
     (function () {
       const WIDTH = 300;
       const HEIGHT = 200;
-      const BASE_TICK_MS = 20;
-      const SPEED_STEP_MS = 1;
       const MAX_SPEED_LEVEL = 10;
       const PLAYER_COLOR = [255, 255, 0, 255];
       const BLACK = [0, 0, 0, 255];
       const STORAGE_NAME_KEY = "asterisk.record.name";
       const STORAGE_LEVEL_KEY = "asterisk.record.level";
+      const DIFFICULTIES = {
+        easy: {
+          name: "Easy",
+          baseTickMs: 22,
+          speedStepMs: 0.8,
+          obstacleMultiplier: 0.8
+        },
+        normal: {
+          name: "Normal",
+          baseTickMs: 20,
+          speedStepMs: 1,
+          obstacleMultiplier: 1
+        },
+        hard: {
+          name: "Hard",
+          baseTickMs: 18,
+          speedStepMs: 1.2,
+          obstacleMultiplier: 1.3
+        }
+      };
 
       const canvas = document.getElementById("gameCanvas");
       const ctx = canvas.getContext("2d", { willReadFrequently: true });
@@ -124,7 +146,10 @@
       const recordLabel = document.getElementById("recordLabel");
       const statusLabel = document.getElementById("statusLabel");
       const speedLabel = document.getElementById("speedLabel");
-      const newGameBtn = document.getElementById("newGameBtn");
+      const easyBtn = document.getElementById("easyBtn");
+      const normalBtn = document.getElementById("normalBtn");
+      const hardBtn = document.getElementById("hardBtn");
+      const difficultyButtons = [easyBtn, normalBtn, hardBtn];
 
       let timer = null;
       let countdownTimer = null;
@@ -132,6 +157,7 @@
       let level = 0;
       let xPos = 0;
       let yPos = HEIGHT / 2;
+      let currentDifficulty = null;
       let recordLevel = Number.parseInt(localStorage.getItem(STORAGE_LEVEL_KEY) || "1", 10);
       let recordName = localStorage.getItem(STORAGE_NAME_KEY) || "nobody";
 
@@ -166,7 +192,8 @@
       }
 
       function drawAsterisks() {
-        const count = level * 3;
+        const multiplier = currentDifficulty ? currentDifficulty.obstacleMultiplier : 1;
+        const count = Math.max(1, Math.floor(level * 3 * multiplier));
         ctx.fillStyle = "white";
 
         for (let i = 0; i < count; i += 1) {
@@ -207,12 +234,26 @@
       }
 
       function getTickMsForLevel(currentLevel) {
+        if (!currentDifficulty) {
+          return DIFFICULTIES.normal.baseTickMs;
+        }
         const speedLevel = Math.min(Math.max(currentLevel, 1), MAX_SPEED_LEVEL);
-        return BASE_TICK_MS - ((speedLevel - 1) * SPEED_STEP_MS);
+        const tick = currentDifficulty.baseTickMs - ((speedLevel - 1) * currentDifficulty.speedStepMs);
+        return Math.max(1, Math.round(tick));
       }
 
       function updateSpeedLabel() {
-        speedLabel.textContent = `${getTickMsForLevel(level)}ms tick`;
+        if (!currentDifficulty) {
+          speedLabel.textContent = "Select difficulty";
+          return;
+        }
+        speedLabel.textContent = `${currentDifficulty.name}: ${getTickMsForLevel(level)}ms tick`;
+      }
+
+      function setDifficultyButtonsEnabled(enabled) {
+        for (const button of difficultyButtons) {
+          button.disabled = !enabled;
+        }
       }
 
       function stopCountdown() {
@@ -302,7 +343,8 @@
           window.alert("Game Over");
         }
 
-        newGameBtn.disabled = false;
+        setDifficultyButtonsEnabled(true);
+        statusLabel.textContent += " - pick difficulty to play again";
       }
 
       function endGame(crashX, crashY) {
@@ -360,10 +402,12 @@
         }
       }
 
-      function startNewGame() {
+      function startNewGame(difficultyKey) {
+        currentDifficulty = DIFFICULTIES[difficultyKey];
         level = 0;
-        newGameBtn.disabled = true;
+        setDifficultyButtonsEnabled(false);
         statusLabel.textContent = "";
+        updateSpeedLabel();
         beginLevelWithCountdown();
       }
 
@@ -381,7 +425,15 @@
         }
       }
 
-      newGameBtn.addEventListener("click", startNewGame);
+      easyBtn.addEventListener("click", function () {
+        startNewGame("easy");
+      });
+      normalBtn.addEventListener("click", function () {
+        startNewGame("normal");
+      });
+      hardBtn.addEventListener("click", function () {
+        startNewGame("hard");
+      });
       window.addEventListener("keydown", handleKeyDown);
       window.addEventListener("keyup", handleKeyUp);
 
