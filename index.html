@@ -176,6 +176,12 @@
         }
       }
 
+      function drawStartIndicator() {
+        const indicatorY = Math.max(2, Math.min(HEIGHT - 3, yPos));
+        ctx.fillStyle = "rgb(80, 220, 255)";
+        ctx.fillRect(0, indicatorY - 2, 1, 5);
+      }
+
       function randomInt(min, max) {
         return Math.floor(Math.random() * (max - min)) + min;
       }
@@ -197,6 +203,7 @@
       function redrawScreen() {
         drawBoundary();
         drawAsterisks();
+        drawStartIndicator();
       }
 
       function getTickMsForLevel(currentLevel) {
