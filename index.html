@@ -164,12 +164,11 @@
       function drawAsterisks() {
         const count = level * 3;
         ctx.fillStyle = "white";
-        ctx.font = "bold 12px 'Courier New', monospace";
 
         for (let i = 0; i < count; i += 1) {
           const x = randomInt(10, WIDTH - 10);
           const y = randomInt(0, HEIGHT - 10);
-          ctx.fillText("*", x, y + 10);
+          ctx.fillRect(x, y, 2, 2);
         }
       }
 
@@ -206,8 +205,58 @@
         redrawScreen();
       }
 
-      function endGame() {
-        stopTimer();
+      function playCrashAnimation(crashX, crashY, onDone) {
+        const durationMs = 280;
+        const particleCount = 14;
+        const cx = Math.max(0, Math.min(WIDTH - 1, crashX));
+        const cy = Math.max(0, Math.min(HEIGHT - 1, crashY));
+        const particles = [];
+
+        for (let i = 0; i < particleCount; i += 1) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 8 + Math.random() * 16;
+          particles.push({
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            size: Math.random() > 0.5 ? 2 : 3,
+            color: Math.random() > 0.35 ? "255,210,80" : "255,255,255"
+          });
+        }
+
+        let startTime = null;
+
+        function frame(now) {
+          if (startTime === null) {
+            startTime = now;
+          }
+
+          const elapsed = now - startTime;
+          const t = Math.min(elapsed / durationMs, 1);
+          const alpha = 1 - t;
+
+          for (const p of particles) {
+            const px = cx + (p.vx * t);
+            const py = cy + (p.vy * t) + (22 * t * t);
+            ctx.fillStyle = `rgba(${p.color}, ${alpha})`;
+            ctx.fillRect(Math.round(px), Math.round(py), p.size, p.size);
+          }
+
+          ctx.strokeStyle = `rgba(255,235,160, ${alpha * 0.8})`;
+          ctx.beginPath();
+          ctx.arc(cx, cy, 2 + (t * 10), 0, Math.PI * 2);
+          ctx.stroke();
+
+          if (t < 1) {
+            window.requestAnimationFrame(frame);
+          } else {
+            onDone();
+          }
+        }
+
+        window.requestAnimationFrame(frame);
+      }
+
+      function finalizeGameOver() {
 
         if (level > recordLevel) {
           const name = window.prompt("High Score! Enter your name:", recordName);
@@ -228,6 +277,11 @@
         newGameBtn.disabled = false;
       }
 
+      function endGame(crashX, crashY) {
+        stopTimer();
+        playCrashAnimation(crashX, crashY, finalizeGameOver);
+      }
+
       function tick() {
         xPos += 1;
         yPos += keyDown ? -1 : 1;
@@ -238,7 +292,7 @@
         }
 
         if (!isBlackPixel(xPos, yPos)) {
-          endGame();
+          endGame(xPos, yPos);
           return;
         }
 
@@ -266,14 +320,14 @@
       }
 
       function handleKeyDown(event) {
-        if (event.code === "Space" || event.code === "ArrowUp" || event.key === "Control") {
+        if (event.code === "Space" || event.code === "ArrowUp" || event.key === "Control" || event.code === "Enter") {
           keyDown = true;
           event.preventDefault();
         }
       }
 
       function handleKeyUp(event) {
-        if (event.code === "Space" || event.code === "ArrowUp" || event.key === "Control") {
+        if (event.code === "Space" || event.code === "ArrowUp" || event.key === "Control" || event.code === "Enter") {
           keyDown = false;
           event.preventDefault();
         }
